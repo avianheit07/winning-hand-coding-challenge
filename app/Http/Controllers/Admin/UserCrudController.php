@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Requests\UserRequest;
+use App\Models\User;
+use App\Models\UserType;
 use Backpack\CRUD\app\Http\Controllers\CrudController;
 use Backpack\CRUD\app\Library\CrudPanel\CrudPanelFacade as CRUD;
 use Illuminate\Http\Client\Request;
@@ -20,6 +22,7 @@ class UserCrudController extends CrudController
     use \Backpack\CRUD\app\Http\Controllers\Operations\DeleteOperation;
     use \Backpack\CRUD\app\Http\Controllers\Operations\ShowOperation;
 
+    protected $method;
     /**
      * Configure the CrudPanel object. Apply settings to all operations.
      * 
@@ -27,15 +30,25 @@ class UserCrudController extends CrudController
      */
     public function setup()
     {
-        CRUD::setModel(\App\Models\User::class);
+        CRUD::setModel(User::class);
         CRUD::setRoute(config('backpack.base.route_prefix') . '/user');
         CRUD::setEntityNameStrings('user', 'users');
         CRUD::addField([
-            'name' => 'user_type',
+            'name' => 'user_type_id',
             'label' => 'User Type',
-            'type' => 'select_from_array',
-            'options' => ['admin' => 'Admin', 'user' => 'User'], // Set your options here
-            'allows_null' => false,
+            'type' => 'select',
+            'entity' => 'userType',
+            'model' => UserType::class,
+            'attribute' => 'name',
+        ]);
+    
+        CRUD::addColumn([
+            'name' => 'user_type_id',
+            'label' => 'User Type',
+            'type' => 'select',
+            'entity' => 'userType',
+            'model' => UserType::class,
+            'attribute' => 'name',
         ]);
     }
 
@@ -47,12 +60,25 @@ class UserCrudController extends CrudController
      */
     protected function setupListOperation()
     {
-        CRUD::setFromDb(); // set columns from db columns.
+        CRUD::column('email')->label('Email');
 
-        /**
-         * Columns can be defined using the fluent syntax:
-         * - CRUD::column('price')->type('number');
-         */
+        CRUD::addColumn([
+            'name' => 'full_name', // a unique identifier for this column
+            'label' => 'Full Name',
+            'type' => 'text',
+            'value' => function ($entry) {
+                return $entry->full_name;
+            },
+        ]);
+
+        CRUD::addColumn([
+            'name'      => 'user_type_id',
+            'label'     => 'User Type',
+            'type'      => 'select',
+            'entity'    => 'userType', // relation name in the User model
+            'model'     => UserType::class, // related model
+            'attribute' => 'name', // field to display from the related model
+        ]);
     }
 
     /**
@@ -64,12 +90,20 @@ class UserCrudController extends CrudController
     protected function setupCreateOperation()
     {
         CRUD::setValidation(UserRequest::class);
-        CRUD::setFromDb(); // set fields from db columns.
 
-        /**
-         * Fields can be defined using the fluent syntax:
-         * - CRUD::field('price')->type('number');
-         */
+        CRUD::addField(['name' => 'first_name', 'type' => 'text', 'label' => 'First Name']);
+        CRUD::addField(['name' => 'last_name', 'type' => 'text', 'label' => 'Last Name']);
+        CRUD::addField(['name' => 'email', 'type' => 'email', 'label' => 'Email']);
+        CRUD::addField(['name' => 'password', 'type' => 'password', 'label' => 'Password']);
+
+        CRUD::addField([
+            'name'      => 'user_type_id',
+            'label'     => 'User Type',
+            'type'      => 'select',
+            'entity'    => 'userType',
+            'model'     => UserType::class,
+            'attribute' => 'name',
+        ]);
     }
 
     /**
@@ -80,6 +114,13 @@ class UserCrudController extends CrudController
      */
     protected function setupUpdateOperation()
     {
+        CRUD::addField(['id' => 'id', 'type' => 'hidden', 'name' => 'Id']);
+
         $this->setupCreateOperation();
+        $request = $this->crud->getRequest();
+
+        if (!$request->filled('password')) {
+            $request->request->remove('password');
+        }
     }
 }

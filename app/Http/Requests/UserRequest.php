@@ -24,9 +24,26 @@ class UserRequest extends FormRequest
      */
     public function rules()
     {
-        return [
-            // 'name' => 'required|min:5|max:255'
+        $rules = [
+            'first_name'    => 'required|string|max:255',
+            'last_name'    => 'required|string|max:255',
+            'email'        => 'required|email|unique:users,email',
+            'user_type_id' => 'required|exists:user_types,id',
+            'password'     => 'nullable'
         ];
+
+        switch ($this->getMethod()) {
+            case "GET":
+                break;
+            case "POST":
+                $rules['password'] = 'required|string|min:6|confirmed'; // Password is required only during creation
+                break;
+            case "PUT":
+                $rules['email'] = 'required|email|unique:users,email,' . $this->id;
+                break;
+        }
+
+        return $rules;
     }
 
     /**
